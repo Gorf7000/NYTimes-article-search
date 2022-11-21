@@ -72,23 +72,3 @@ for(searchyr in startyr:endyr){
         select(!starts_with("ocr")) %>%
         write.table(paste0("CHRONAM_",searchterms,"_",searchyr,".txt"), sep="\t", row.names=F, quote=F, qmethod="double")
 } #end multi-year loop
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-# test stuff
-q2 <- "https://chroniclingamerica.loc.gov/search/pages/results/?proxtext=comet&rows=10&format=json"
-html2 <- GET(q2)  
-View(content(html2, "text"))
-
-##convert list to string
-#1st find list elements ofr the jsonresp
-test <- jsonresp$items %>% select(where(is.list)) 
-test %>% mutate(newnote=sapply(note, paste, collapse="|")) %>% View()
-jsonresp$items %>% mutate(across(where(is.list), ~ sapply(.x, paste, collapse="||"))) %>% View()
