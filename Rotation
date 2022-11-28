@@ -39,10 +39,10 @@ s_by_year = function(searchterms){
                             "&searchType=advanced",
                             "&format=json",
                             "&page=",page)
-            print(c(searchyr,lex_term))
+            # print(c(searchyr,lex_term))
             htmlresp <- GET(query) #send query to API and get returned html
             #View(content(htmlresp, "text")) #for debugging
-            jsonresp <- fromJSON(httr::content(htmlresp, "text")) #extract just the page content, format should be json
+            jsonresp <- fromJSON(httr::content(htmlresp, "text",encoding="UTF-8")) #extract just the page content, format should be json
             hits <- jsonresp$totalItems #total hits from query
                     
             #update maxpages
@@ -51,8 +51,9 @@ s_by_year = function(searchterms){
               pages_lst <- list() #empty list to concatenate results
             }
             
-            #to debug skipping pages
-            message(sprintf("For %s, Retrieving page %d of %d", searchyr, page, maxPages))
+            #to debug skipping pages 
+            message(sprintf("For the term %s in %s, Retrieving page %d of %d", lex_term, searchyr, page, maxPages))
+
             
             #saving everything to a list for later processing
             pages_lst[[page]]<- jsonresp$items
@@ -92,7 +93,7 @@ names(search_lex) <- c("lex_num","lex_word")
 
 
 for(lex_term in search_lex$lex_word) {
-  print(c("The Current Term is ",lex_term))
+  # print(c("The Current Term is ",lex_term))
   s_by_year(lex_term)
 }
 
