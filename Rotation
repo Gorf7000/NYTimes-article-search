@@ -1,0 +1,99 @@
+### LOC Chronicallying America API
+
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(tidyr)
+
+setwd("C:/Users/foo")
+
+baseurl <- "https://chroniclingamerica.loc.gov/search/pages/results/"
+
+
+s_by_year = function(searchterms){
+      
+    rowsperpg <- 20
+    startyr <- 1850
+    endyr <- 1852
+    searchterms <- lex_term
+    
+    #searchyr <- 1850 #from testing
+    
+    ##multi-year loop
+    for(searchyr in startyr:endyr){
+      #reset these every loop
+      page <- 1
+      maxPages <- 1
+      hits <-0
+      
+      ### pages loop
+
+          while(page <= maxPages) {
+            query <- paste0(baseurl,
+                            "?",
+                            "dateFilterType=yearRange&date1=",searchyr,"&date2=",searchyr,
+                            "&proxtext=",lex_term,"+",lex_term,"&proxdistance=100",
+                            #"andtext=",lex_term,
+                            "&rows=",rowsperpg,
+                            "&language=eng",
+                            "&searchType=advanced",
+                            "&format=json",
+                            "&page=",page)
+            print(c(searchyr,lex_term))
+            htmlresp <- GET(query) #send query to API and get returned html
+            #View(content(htmlresp, "text")) #for debugging
+            jsonresp <- fromJSON(httr::content(htmlresp, "text")) #extract just the page content, format should be json
+            hits <- jsonresp$totalItems #total hits from query
+                    
+            #update maxpages
+            if(page==1){
+              maxPages <- round(hits / rowsperpg) #calculating last page - starts at 1 not 0
+              pages_lst <- list() #empty list to concatenate results
+            }
+            
+            #to debug skipping pages
+            message(sprintf("For %s, Retrieving page %d of %d", searchyr, page, maxPages))
+            
+            #saving everything to a list for later processing
+            pages_lst[[page]]<- jsonresp$items
+            
+            #increment page
+            page <- page + 1
+            
+          }#end pages loop
+
+      
+          ###try to kick it out if hits !>=1
+          if (hits >= 1) {
+                
+          #once you have all the pages, try jsonlite rbind trick
+          pages_df <- rbind_pages(pages_lst)
+          
+          #then clean up nested lists & write to file:
+          ## this bit does the following
+          ### line 1 - pastes list entries down into one string seperated by ||
+          ### line 2 - removes line breaks from ocr text
+          ### Line 3 - removes original ocr column from results
+          ### Line 4 - saves file to hd
+          tmp_pages <- pages_df %>% mutate(across(where(is.list), ~ sapply(.x, paste, collapse="||"))) %>% 
+            mutate(text_clean = gsub("[[:punct:]]","", ocr_eng)) %>% 
+            select(!starts_with("ocr")) %>%
+            mutate(across(where(is.character), gsub, pattern="[[:cntrl:]]", replacement=""))
+          
+          tmp_pages %>%
+            #  select(-text_clean) %>%
+            write.table(paste0("CHRONAM_",lex_term,"_",searchyr,".txt"), sep="\t", row.names=F, quote=F, qmethod="double")
+        } #end multi-year loop
+    }
+}
+
+search_lex <- read.csv("lexicon.csv")
+names(search_lex) <- c("lex_num","lex_word")
+
+
+for(lex_term in search_lex$lex_word) {
+  print(c("The Current Term is ",lex_term))
+  s_by_year(lex_term)
+}
+
+print("And so say we all...")
